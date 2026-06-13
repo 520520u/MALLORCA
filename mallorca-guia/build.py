@@ -4,14 +4,14 @@ import urllib.parse
 from pathlib import Path
 
 BASE = Path(__file__).parent
-from images_data import DAYS, MAINS, DAY_TAB_LABELS  # noqa: E402
+from images_data import DAYS, MAINS, EXTRAS, DAY_TAB_LABELS, thumb_path, full_path, photos_for_key  # noqa: E402
 
-HERO = "https://images.unsplash.com/photo-1651918858137-d3d484d35854?w=1920&q=80"
+HERO = "./images/es_trenc_main.jpg"
 
 
 def site(key):
     m = MAINS[key]
-    return m["url"], m["url"].replace("w=800", "w=1600"), m["cap"]
+    return thumb_path(m["file"]), full_path(m["file"]), m["cap"]
 
 
 def gmaps_embed(stops):
@@ -24,21 +24,42 @@ def gmaps_embed(stops):
     return f"https://maps.google.com/maps?saddr={enc[0]}&daddr={mid}+to:{enc[-1]}&dirflg=d&output=embed"
 
 
-def gallery(*keys):
+def photo_list(spot_keys):
+    photos = []
+    for key in spot_keys:
+        photos.extend(photos_for_key(key))
+    return photos
+
+
+def spot_index(spot_keys, spot_key):
+    for i, p in enumerate(photo_list(spot_keys)):
+        if p["key"] == spot_key:
+            return i
+    return 0
+
+
+def gallery(day_num, *keys):
+    gal_id = f"day{day_num}"
+    photos = photo_list(keys)
     items = []
-    for k in keys:
-        url, full, cap = site(k)
+    for i, p in enumerate(photos):
         items.append(
-            f'<button type="button" class="gallery-item" data-full="{full}" data-cap="{cap}" '
-            f'aria-label="Ampliar: {cap}"><img src="{url}" alt="{cap}" loading="lazy" decoding="async"></button>'
+            f'<button type="button" class="gallery-thumb" data-gallery="{gal_id}" data-index="{i}" '
+            f'data-full="{p["full"]}" data-cap="{p["cap"]}" aria-label="Ampliar: {p["cap"]}">'
+            f'<img src="{p["url"]}" alt="{p["cap"]}" loading="lazy" decoding="async"></button>'
         )
-    return "".join(items)
+    return (
+        '<p class="gallery-hint">Toca cualquier foto para ampliar · Desliza entre imágenes en el zoom</p>'
+        f'<div class="day-gallery" data-gallery-strip="{gal_id}">{"".join(items)}</div>'
+    )
 
 
-def spot(key, title, desc):
-    url, full, cap = site(key)
+def spot(day_num, spot_keys, key, title, desc):
+    gal_id = f"day{day_num}"
+    idx = spot_index(spot_keys, key)
+    url, _, cap = site(key)
     return f"""<li class="spot-item">
-                  <button type="button" class="spot-img spot-zoom" data-full="{full}" data-cap="{cap}" aria-label="Ampliar {title}">
+                  <button type="button" class="spot-img" data-gallery="{gal_id}" data-index="{idx}" aria-label="Ver fotos de {title}">
                     <img src="{url}" alt="{cap}" loading="lazy" decoding="async">
                   </button>
                   <div class="spot-body"><strong>{title}</strong><span class="spot-desc">{desc}</span></div>
@@ -74,8 +95,7 @@ def day_block(num, zone, title, drive_km, drive_time, tranq, route_text, teaser,
             <div class="stat"><span class="stat-value">9:00</span><span class="stat-label">Mejor hora inicio</span></div>
           </div>
           <p class="day-teaser">{teaser}</p>
-          <p class="gallery-hint">Toca cualquier foto para ampliar · Desliza entre imágenes en el zoom</p>
-          <div class="day-gallery">{gallery_html}</div>
+          {gallery_html}
           <div class="day-details">
             <div class="day-detail"><h4>Qué hacer</h4><ul>{activities}</ul></div>
             <div class="day-detail"><h4>Horario sugerido</h4><ul>{schedule}</ul></div>
@@ -122,7 +142,7 @@ def main():
     ]
     cards = ""
     for key, (zone, name, style, desc, search) in zip(card_keys, card_data):
-        url = MAINS[key]["url"]
+        url = thumb_path(MAINS[key]["file"])
         cards += f"""<article class="card">
           <div class="card-img" style="background-image:url('{url}')"></div>
           <div class="card-body">
@@ -198,9 +218,9 @@ def main():
     .day-teaser{{font-family:Georgia,serif;font-style:italic;color:var(--green);margin-bottom:.75rem;font-size:1.02rem;line-height:1.6}}
     .gallery-hint{{font-size:.78rem;color:var(--text-muted);margin-bottom:.65rem}}
     .day-gallery{{display:flex;gap:.65rem;overflow-x:auto;padding-bottom:.35rem;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;margin-bottom:1.25rem}}
-    .gallery-item{{border:none;padding:0;background:none;cursor:zoom-in;flex-shrink:0;scroll-snap-align:start;border-radius:var(--radius-sm);overflow:hidden;box-shadow:var(--shadow);position:relative}}
-    .gallery-item::after{{content:'🔍';position:absolute;right:.35rem;bottom:.3rem;font-size:.7rem;background:rgba(0,0,0,.45);color:#fff;padding:.12rem .3rem;border-radius:5px}}
-    .gallery-item img{{height:130px;width:auto;min-width:200px;max-width:280px;object-fit:cover;display:block}}
+    .gallery-thumb{{border:none;padding:0;background:none;cursor:zoom-in;flex-shrink:0;scroll-snap-align:start;border-radius:var(--radius-sm);overflow:hidden;box-shadow:var(--shadow);position:relative}}
+    .gallery-thumb::after{{content:'🔍';position:absolute;right:.35rem;bottom:.3rem;font-size:.7rem;background:rgba(0,0,0,.45);color:#fff;padding:.12rem .3rem;border-radius:5px}}
+    .gallery-thumb img{{height:130px;width:auto;min-width:200px;max-width:280px;object-fit:cover;display:block}}
     .day-details{{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:1.25rem;margin-bottom:1.25rem;width:100%}}
     .day-detail h4{{font-size:.78rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);margin-bottom:.5rem}}
     .day-detail ul{{list-style:none;font-size:.9rem;color:var(--text)}}
@@ -253,6 +273,8 @@ def main():
     .lightbox-img{{max-width:100%;max-height:78vh;object-fit:contain;border-radius:8px;touch-action:pinch-zoom}}
     .lightbox-cap{{color:#fff;margin-top:.75rem;font-size:.9rem;text-align:center;max-width:640px}}
     .lightbox-close{{position:absolute;top:-2.5rem;right:0;width:2.5rem;height:2.5rem;border:none;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;font-size:1.4rem;cursor:pointer}}
+    .lightbox-prev,.lightbox-next{{position:absolute;top:50%;transform:translateY(-50%);width:2.75rem;height:2.75rem;border:none;border-radius:50%;background:rgba(255,255,255,.2);color:#fff;font-size:1.5rem;cursor:pointer}}
+    .lightbox-prev{{left:.25rem}}.lightbox-next{{right:.25rem}}
     @media(max-width:640px){{
       .container{{max-width:100%;padding-left:max(.65rem,env(safe-area-inset-left));padding-right:max(.65rem,env(safe-area-inset-right))}}
       section{{padding:2.75rem 0}}
@@ -260,7 +282,7 @@ def main():
       #itinerario .day-details{{display:flex;flex-direction:column}}
       #itinerario .spot-list{{display:flex;flex-direction:column}}
       .gmap-embed,.route-day-panel .gmap-embed{{height:min(52vw,340px);min-height:260px}}
-      .gallery-item img{{height:118px;min-width:42vw;max-width:none;width:42vw}}
+      .gallery-thumb img{{height:118px;min-width:42vw;max-width:none;width:42vw}}
       .route-day-tab{{font-size:.68rem;padding:.55rem .2rem;min-width:3.4rem}}
     }}
     @media(max-width:820px){{
@@ -412,7 +434,9 @@ def main():
   <div id="lightbox" class="lightbox" hidden role="dialog" aria-modal="true" aria-label="Imagen ampliada">
     <button type="button" class="lightbox-close" aria-label="Cerrar">×</button>
     <div class="lightbox-inner">
-      <img class="lightbox-img" src="" alt="" referrerpolicy="no-referrer">
+      <button type="button" class="lightbox-prev" aria-label="Anterior">‹</button>
+      <img class="lightbox-img" src="" alt="">
+      <button type="button" class="lightbox-next" aria-label="Siguiente">›</button>
       <p class="lightbox-cap"></p>
     </div>
   </div>
@@ -436,13 +460,52 @@ def main():
     }});
   }});
   function qsa(s,r){{return Array.from((r||document).querySelectorAll(s));}}
-  var lb=document.getElementById('lightbox'),lbImg=lb&&lb.querySelector('.lightbox-img'),lbCap=lb&&lb.querySelector('.lightbox-cap'),lbClose=lb&&lb.querySelector('.lightbox-close');
-  function openLb(full,cap){{if(!lb)return;lbImg.src=full;lbImg.alt=cap||'';lbCap.textContent=cap||'';lb.hidden=false;lb.classList.add('is-open');document.body.style.overflow='hidden';}}
-  function closeLb(){{if(!lb)return;lb.classList.remove('is-open');lb.hidden=true;lbImg.src='';document.body.style.overflow='';}}
-  document.addEventListener('click',function(e){{var el=e.target.closest('[data-full]');if(el){{e.preventDefault();openLb(el.getAttribute('data-full'),el.getAttribute('data-cap'));}}}});
+  var lb=document.getElementById('lightbox'),lbImg=lb&&lb.querySelector('.lightbox-img'),lbCap=lb&&lb.querySelector('.lightbox-cap');
+  var lbClose=lb&&lb.querySelector('.lightbox-close'),lbPrev=lb&&lb.querySelector('.lightbox-prev'),lbNext=lb&&lb.querySelector('.lightbox-next');
+  var lbSet={{}},lbId='',lbIdx=0;
+  function buildSets(){{
+    lbSet={{}};
+    qsa('[data-gallery-strip]').forEach(function(strip){{
+      var id=strip.getAttribute('data-gallery-strip');
+      lbSet[id]=qsa('.gallery-thumb',strip).map(function(b){{
+        return{{src:b.getAttribute('data-full'),cap:b.getAttribute('data-cap')||''}};
+      }});
+    }});
+  }}
+  function showLb(){{
+    if(!lb||!lbSet[lbId]||!lbSet[lbId][lbIdx])return;
+    var item=lbSet[lbId][lbIdx];
+    lbImg.src=item.src;lbImg.alt=item.cap;lbCap.textContent=item.cap;
+  }}
+  function openLb(id,i){{
+    buildSets();
+    if(!lbSet[id]||!lbSet[id].length)return;
+    lbId=id;lbIdx=i;showLb();
+    lb.hidden=false;lb.classList.add('is-open');document.body.style.overflow='hidden';
+  }}
+  function closeLb(){{if(!lb)return;lb.classList.remove('is-open');lb.hidden=true;document.body.style.overflow='';if(lbImg)lbImg.src='';}}
+  qsa('.gallery-thumb').forEach(function(btn){{
+    btn.addEventListener('click',function(){{openLb(btn.getAttribute('data-gallery'),parseInt(btn.getAttribute('data-index'),10)||0);}});
+  }});
+  qsa('.spot-img[data-gallery]').forEach(function(btn){{
+    btn.addEventListener('click',function(){{openLb(btn.getAttribute('data-gallery'),parseInt(btn.getAttribute('data-index'),10)||0);}});
+  }});
   if(lbClose)lbClose.addEventListener('click',closeLb);
   if(lb)lb.addEventListener('click',function(e){{if(e.target===lb)closeLb();}});
-  document.addEventListener('keydown',function(e){{if(e.key==='Escape')closeLb();}});
+  if(lbPrev)lbPrev.addEventListener('click',function(e){{e.stopPropagation();lbIdx=(lbIdx-1+lbSet[lbId].length)%lbSet[lbId].length;showLb();}});
+  if(lbNext)lbNext.addEventListener('click',function(e){{e.stopPropagation();lbIdx=(lbIdx+1)%lbSet[lbId].length;showLb();}});
+  document.addEventListener('keydown',function(e){{
+    if(!lb||!lb.classList.contains('is-open'))return;
+    if(e.key==='Escape')closeLb();
+    if(e.key==='ArrowLeft'&&lbPrev)lbPrev.click();
+    if(e.key==='ArrowRight'&&lbNext)lbNext.click();
+  }});
+  var lx=0;
+  if(lb)lb.addEventListener('touchstart',function(e){{lx=e.touches[0].clientX;}},{{passive:true}});
+  if(lb)lb.addEventListener('touchend',function(e){{
+    var d=e.changedTouches[0].clientX-lx;if(Math.abs(d)<45)return;
+    if(d<0&&lbNext)lbNext.click();else if(lbPrev)lbPrev.click();
+  }});
 }})();
 </script>
 </body>

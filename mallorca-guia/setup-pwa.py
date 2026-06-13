@@ -38,7 +38,7 @@ MANIFEST = """{
 """
 
 SW_JS = """/* Mallorca Guía — Service Worker */
-const CACHE = 'mallorca-guia-v1';
+const CACHE = 'mallorca-guia-v2';
 const APP_SHELL = [
   './',
   './index.html',
@@ -48,7 +48,7 @@ const APP_SHELL = [
   './icons/apple-touch-icon.png',
   './icons/icon.svg'
 ];
-const IMAGE_HOSTS = ['images.unsplash.com'];
+const IMAGE_HOSTS = [];
 
 self.addEventListener('install', function (event) {
   event.waitUntil(
@@ -229,7 +229,7 @@ def main():
     docs = ROOT / "docs-mallorca"
     deploy_dir(docs)
     print("PWA:", ROOT / "mallorca-pwa")
-    print("Docs:", docs)
+    print("Docs (copiar a repo como docs/):", docs)
 
 
 if __name__ == "__main__":
